@@ -4,16 +4,16 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Matrix
 import android.os.Bundle
+import android.util.Log
 import android.view.Surface
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraX
-import androidx.camera.core.Preview
-import androidx.camera.core.PreviewConfig
+import androidx.camera.core.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
+import java.io.File
 import java.util.concurrent.Executors
 
 private const val REQUEST_CODE_PERMISSIONS = 10
@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity() {
     private fun startCamera() {
         // Create configuration object for the viewfinder use case
         val previewConfig = PreviewConfig.Builder().build()
-
         val preview = Preview(previewConfig)
         preview.setOnPreviewOutputUpdateListener {
             // To update the SurfaceTexture, we have to remove it and re-add it
@@ -59,7 +58,42 @@ class MainActivity : AppCompatActivity() {
             updateTransform()
         }
 
-        CameraX.bindToLifecycle(this, preview)
+        // Capture img use case
+        val captureConfig = ImageCaptureConfig.Builder().apply {
+            setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
+            setFlashMode(FlashMode.ON)
+        }.build()
+        val capture = ImageCapture(captureConfig)
+        button_capture.setOnClickListener {
+            val file = File(
+                externalMediaDirs.first(),
+                "${System.currentTimeMillis()}.jpg"
+            )
+            capture.takePicture(file, executor,
+                object : ImageCapture.OnImageSavedListener {
+                    override fun onError(
+                        imageCaptureError: ImageCapture.ImageCaptureError,
+                        message: String,
+                        exc: Throwable?
+                    ) {
+                        val msg = "Photo capture failed: $message"
+                        Log.e("CameraXApp", msg, exc)
+                        viewFinder.post {
+                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun onImageSaved(file: File) {
+                        val msg = "Photo capture succeeded: ${file.absolutePath}"
+                        Log.d("CameraXApp", msg)
+                        viewFinder.post {
+                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                })
+        }
+
+        CameraX.bindToLifecycle(this, preview, capture)
     }
 
     private fun updateTransform() {
