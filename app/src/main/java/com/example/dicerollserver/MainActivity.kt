@@ -39,6 +39,9 @@ class MainActivity : AppCompatActivity() {
         viewFinder.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateTransform()
         }
+
+
+        Notifs.createChannels(this)
     }
 
 
