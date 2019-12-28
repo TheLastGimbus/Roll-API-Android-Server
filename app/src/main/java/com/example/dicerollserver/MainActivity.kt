@@ -253,7 +253,11 @@ class MainActivity : AppCompatActivity() {
             }
 
 
-            while (res == null);
+            // This ".toString()" turns out to be very important
+            // It doesn't work without it because no
+            while (res == null) {
+                TAG_SERVER.toString()
+            }
             res!!.closeConnection(true)
             Log.i(TAG_SERVER, "Serving response...")
             return res!!
