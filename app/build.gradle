@@ -59,4 +59,6 @@ dependencies {
 
     // HTTP Server
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
+    // HTTP Client
+    implementation 'com.squareup.okhttp3:okhttp:3.12.1'
 }

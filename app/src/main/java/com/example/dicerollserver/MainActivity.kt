@@ -17,6 +17,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.android.synthetic.main.activity_main.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
@@ -195,6 +197,21 @@ class MainActivity : AppCompatActivity() {
 
     private inner class WebServer(PORT: Int) : NanoHTTPD(PORT) {
 
+        private fun requestShake(): Boolean {
+            try {
+                Log.i(TAG_SERVER, "Requesting shake...")
+                val http = OkHttpClient()
+                val request = Request.Builder()
+                    .url("http://192.168.1.60/shake") // IP of shaking machine
+                    .build()
+                val response = http.newCall(request).execute()
+                return response.isSuccessful
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            return false
+        }
+
         // This is to use Regex in 'when'
         operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
 
@@ -204,24 +221,35 @@ class MainActivity : AppCompatActivity() {
             when (session.uri) {
                 "/" -> {
                     Log.i(TAG_SERVER, "Uri wants a new shake...")
-                    getPicture { picFile ->
-                        res = if (picFile != null) {
-                            Log.i(TAG_SERVER, "Taking pic success, sending...")
-                            val json = JSONObject()
-                            json.put("picture_uri", "/picture/${picFile.name}")
-                            newFixedLengthResponse(
-                                Response.Status.OK,
-                                "text/json",
-                                json.toString().replace("\\/", "/")
-                            )
-                        } else {
-                            Log.e(TAG_SERVER, "Taking pic failure!")
-                            newFixedLengthResponse(
-                                Response.Status.INTERNAL_ERROR,
-                                MIME_PLAINTEXT,
-                                "Camera error!"
-                            )
+                    // Make a HTTP request to shaking machine to shake the dice
+                    if (requestShake()) {
+                        Log.i(TAG_SERVER, "Shake Success!")
+                        getPicture { picFile ->
+                            res = if (picFile != null) {
+                                Log.i(TAG_SERVER, "Taking pic success, sending...")
+                                val json = JSONObject()
+                                json.put("picture_uri", "/picture/${picFile.name}")
+                                newFixedLengthResponse(
+                                    Response.Status.OK,
+                                    "text/json",
+                                    json.toString().replace("\\/", "/")
+                                )
+                            } else {
+                                Log.e(TAG_SERVER, "Taking pic failure!")
+                                newFixedLengthResponse(
+                                    Response.Status.INTERNAL_ERROR,
+                                    MIME_PLAINTEXT,
+                                    "Camera error!"
+                                )
+                            }
                         }
+                    } else {
+                        Log.e(TAG_SERVER, "Shake fail!")
+                        res = newFixedLengthResponse(
+                            Response.Status.INTERNAL_ERROR,
+                            MIME_PLAINTEXT,
+                            "Shake mechanism error!"
+                        )
                     }
                 }
                 in Regex("/picture/\\d+.jpg") -> {
@@ -260,6 +288,7 @@ class MainActivity : AppCompatActivity() {
             while (res == null) {
                 TAG_SERVER.toString()
             }
+            // This is also very important because it sometimes doesn't work if it keeps connection
             res!!.closeConnection(true)
             Log.i(TAG_SERVER, "Serving response...")
             return res!!
