@@ -17,6 +17,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.android.synthetic.main.activity_main.*
+import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -206,11 +207,12 @@ class MainActivity : AppCompatActivity() {
                     getPicture { picFile ->
                         res = if (picFile != null) {
                             Log.i(TAG_SERVER, "Taking pic success, sending...")
+                            val json = JSONObject()
+                            json.put("picture_uri", "/picture/${picFile.name}")
                             newFixedLengthResponse(
                                 Response.Status.OK,
-                                "image/jpg",
-                                picFile.inputStream(),
-                                picFile.length()
+                                "text/json",
+                                json.toString().replace("\\/", "/")
                             )
                         } else {
                             Log.e(TAG_SERVER, "Taking pic failure!")
