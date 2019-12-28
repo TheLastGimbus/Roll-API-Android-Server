@@ -7,6 +7,7 @@ import android.graphics.Matrix
 import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.util.Log
+import android.util.Size
 import android.view.Surface
 import android.view.ViewGroup
 import android.widget.Toast
@@ -99,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         val captureConfig = ImageCaptureConfig.Builder().apply {
             setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
             setFlashMode(FlashMode.ON)
+            setTargetResolution(Size(1200, 1600))
         }.build()
         imageCapture = ImageCapture(captureConfig)
         button_capture.setOnClickListener {
