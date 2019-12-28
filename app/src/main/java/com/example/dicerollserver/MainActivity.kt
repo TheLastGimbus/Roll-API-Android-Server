@@ -64,6 +64,14 @@ class MainActivity : AppCompatActivity() {
         Notifs.createChannels(this)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (!server.isAlive) {
+            server.stop()
+            server.start()
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         server.stop()
