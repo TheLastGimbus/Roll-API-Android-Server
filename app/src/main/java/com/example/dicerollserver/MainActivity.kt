@@ -199,13 +199,14 @@ class MainActivity : AppCompatActivity() {
             var res: Response? = null
             when (session.uri) {
                 "/" -> {
-                    getPicture {
-                        res = if (it != null) {
+                    getPicture { picFile ->
+                        res = if (picFile != null) {
                             Log.i(TAG_SERVER, "Taking pic success, sending...")
-                            newChunkedResponse(
+                            newFixedLengthResponse(
                                 Response.Status.OK,
                                 "image/jpg",
-                                it.inputStream()
+                                picFile.inputStream(),
+                                picFile.length()
                             )
                         } else {
                             Log.e(TAG_SERVER, "Taking pic failure!")
@@ -225,6 +226,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             while (res == null);
+            res!!.closeConnection(true)
+            Log.i(TAG_SERVER, "Serving response...")
             return res!!
         }
 
