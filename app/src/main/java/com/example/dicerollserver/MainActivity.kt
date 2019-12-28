@@ -190,10 +190,37 @@ class MainActivity : AppCompatActivity() {
     private inner class WebServer(PORT: Int) : NanoHTTPD(PORT) {
 
         override fun serve(session: IHTTPSession): Response {
-            Log.i(TAG_SERVER, session.uri)
-            var res: Response? = newFixedLengthResponse("Okay")
+            Log.i(TAG_SERVER, "New server request, uri: ${session.uri}")
+            var res: Response? = null
+            when (session.uri) {
+                "/" -> {
+                    getPicture {
+                        res = if (it != null) {
+                            Log.i(TAG_SERVER, "Taking pic success, sending...")
+                            newChunkedResponse(
+                                Response.Status.OK,
+                                "image/jpg",
+                                it.inputStream()
+                            )
+                        } else {
+                            Log.e(TAG_SERVER, "Taking pic failure!")
+                            newFixedLengthResponse(
+                                Response.Status.INTERNAL_ERROR,
+                                MIME_PLAINTEXT,
+                                "Camera error!"
+                            )
+                        }
+                    }
+                }
+                else -> res = newFixedLengthResponse(
+                    Response.Status.NOT_FOUND,
+                    MIME_PLAINTEXT,
+                    "404: Not found"
+                )
+            }
+
             while (res == null);
-            return res
+            return res!!
         }
 
         override fun start() {
