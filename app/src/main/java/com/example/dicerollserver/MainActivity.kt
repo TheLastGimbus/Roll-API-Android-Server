@@ -194,11 +194,15 @@ class MainActivity : AppCompatActivity() {
 
     private inner class WebServer(PORT: Int) : NanoHTTPD(PORT) {
 
+        // This is to use Regex in 'when'
+        operator fun Regex.contains(text: CharSequence): Boolean = this.matches(text)
+
         override fun serve(session: IHTTPSession): Response {
             Log.i(TAG_SERVER, "New server request, uri: ${session.uri}")
             var res: Response? = null
             when (session.uri) {
                 "/" -> {
+                    Log.i(TAG_SERVER, "Uri wants a new shake...")
                     getPicture { picFile ->
                         res = if (picFile != null) {
                             Log.i(TAG_SERVER, "Taking pic success, sending...")
@@ -218,12 +222,36 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+                in Regex("/picture/\\d+.jpg") -> {
+                    Log.i(TAG, "Uri wants a picture...")
+                    val picFile = File(
+                        externalMediaDirs.first(),
+                        session.uri.removePrefix("/picture/")
+                    )
+                    res = if (picFile.exists()) {
+                        Log.i(TAG_SERVER, "Picture exists! Sending...")
+                        newFixedLengthResponse(
+                            Response.Status.OK,
+                            "image/jpg",
+                            picFile.inputStream(),
+                            picFile.length()
+                        )
+                    } else {
+                        Log.e(TAG_SERVER, "Picture doesn't exist!")
+                        newFixedLengthResponse(
+                            Response.Status.NOT_FOUND,
+                            MIME_PLAINTEXT,
+                            "404: Not found"
+                        )
+                    }
+                }
                 else -> res = newFixedLengthResponse(
                     Response.Status.NOT_FOUND,
                     MIME_PLAINTEXT,
                     "404: Not found"
                 )
             }
+
 
             while (res == null);
             res!!.closeConnection(true)
