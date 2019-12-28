@@ -110,10 +110,13 @@ class MainActivity : AppCompatActivity() {
         CameraX.bindToLifecycle(this, preview, imageCapture)
     }
 
-    private fun getPicture(result: (picture: File?) -> Unit) {
+    private fun getPicture(
+        name: String = "${System.currentTimeMillis()}.jpg",
+        result: (picture: File?) -> Unit
+    ) {
         val file = File(
             externalMediaDirs.first(),
-            "${System.currentTimeMillis()}.jpg"
+            name
         )
         imageCapture.takePicture(file, executor,
             object : ImageCapture.OnImageSavedListener {
