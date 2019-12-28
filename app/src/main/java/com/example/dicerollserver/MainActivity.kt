@@ -114,17 +114,15 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     val msg = "Photo capture failed: $message"
                     Log.e("CameraXApp", msg, exc)
-                    viewFinder.post {
-                        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    result(null)
                 }
 
                 override fun onImageSaved(file: File) {
                     val msg = "Photo capture succeeded: ${file.absolutePath}"
                     Log.d("CameraXApp", msg)
-                    viewFinder.post {
-                        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    result(file)
                 }
             })
     }
