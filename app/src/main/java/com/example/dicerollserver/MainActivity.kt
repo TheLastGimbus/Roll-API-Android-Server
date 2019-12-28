@@ -1,10 +1,10 @@
 package com.example.dicerollserver
 
 import android.Manifest
-import android.content.Intent
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Matrix
-import android.os.Build
+import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.util.Log
 import android.view.Surface
@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import fi.iki.elonen.NanoHTTPD
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.util.concurrent.Executors
@@ -22,6 +23,17 @@ private const val REQUEST_CODE_PERMISSIONS = 10
 private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 
 class MainActivity : AppCompatActivity() {
+    companion object {
+        const val TAG = "MainActivity"
+        const val TAG_SERVER = "Server"
+    }
+
+    private lateinit var imageCapture: ImageCapture
+
+    private lateinit var wifiLock: WifiManager.WifiLock
+    private val WIFI_LOCK_TAG = "server_wifi_lock"
+
+    private val server = WebServer(8822)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,17 +54,20 @@ class MainActivity : AppCompatActivity() {
             updateTransform()
         }
 
-        button_start.setOnClickListener {
-            val intent = Intent(this, ServerForegroundService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-        }
+        // Acquire wifi lock to keep wifi alive to handle request to server
+        val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, WIFI_LOCK_TAG)
+        wifiLock.acquire()
 
+        server.start()
 
         Notifs.createChannels(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        server.stop()
+        if (wifiLock.isHeld) wifiLock.release()
     }
 
 
@@ -77,37 +92,41 @@ class MainActivity : AppCompatActivity() {
             setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
             setFlashMode(FlashMode.ON)
         }.build()
-        val capture = ImageCapture(captureConfig)
+        imageCapture = ImageCapture(captureConfig)
         button_capture.setOnClickListener {
-            val file = File(
-                externalMediaDirs.first(),
-                "${System.currentTimeMillis()}.jpg"
-            )
-            capture.takePicture(file, executor,
-                object : ImageCapture.OnImageSavedListener {
-                    override fun onError(
-                        imageCaptureError: ImageCapture.ImageCaptureError,
-                        message: String,
-                        exc: Throwable?
-                    ) {
-                        val msg = "Photo capture failed: $message"
-                        Log.e("CameraXApp", msg, exc)
-                        viewFinder.post {
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-
-                    override fun onImageSaved(file: File) {
-                        val msg = "Photo capture succeeded: ${file.absolutePath}"
-                        Log.d("CameraXApp", msg)
-                        viewFinder.post {
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                })
+            getPicture { }
         }
 
-        CameraX.bindToLifecycle(this, preview, capture)
+        CameraX.bindToLifecycle(this, preview, imageCapture)
+    }
+
+    private fun getPicture(result: (picture: File?) -> Unit) {
+        val file = File(
+            externalMediaDirs.first(),
+            "${System.currentTimeMillis()}.jpg"
+        )
+        imageCapture.takePicture(file, executor,
+            object : ImageCapture.OnImageSavedListener {
+                override fun onError(
+                    imageCaptureError: ImageCapture.ImageCaptureError,
+                    message: String,
+                    exc: Throwable?
+                ) {
+                    val msg = "Photo capture failed: $message"
+                    Log.e("CameraXApp", msg, exc)
+                    viewFinder.post {
+                        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onImageSaved(file: File) {
+                    val msg = "Photo capture succeeded: ${file.absolutePath}"
+                    Log.d("CameraXApp", msg)
+                    viewFinder.post {
+                        Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            })
     }
 
     private fun updateTransform() {
@@ -156,4 +175,26 @@ class MainActivity : AppCompatActivity() {
             baseContext, it
         ) == PackageManager.PERMISSION_GRANTED
     }
+
+
+    private inner class WebServer(PORT: Int) : NanoHTTPD(PORT) {
+
+        override fun serve(session: IHTTPSession): Response {
+            Log.i(TAG_SERVER, session.uri)
+            var res: Response? = newFixedLengthResponse("Okay")
+            while (res == null);
+            return res
+        }
+
+        override fun start() {
+            super.start()
+            Log.i(TAG_SERVER, "Server started")
+        }
+
+        override fun stop() {
+            super.stop()
+            Log.i(TAG_SERVER, "Server stopped")
+        }
+    }
+
 }
