@@ -237,6 +237,12 @@ class MainActivity : AppCompatActivity() {
                     // Make a HTTP request to shaking machine to shake the dice
                     if (requestShake()) {
                         Log.i(TAG_SERVER, "Shake Success!")
+                        // Wait a moment so the dice will get calm
+                        if (imageCapture.flashMode == FlashMode.OFF) {
+                            Thread.sleep(200)
+                        } else {
+                            Thread.sleep(50)
+                        }
                         getPicture { picFile ->
                             res = if (picFile != null) {
                                 Log.i(TAG_SERVER, "Taking pic success, sending...")
