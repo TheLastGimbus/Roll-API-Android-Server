@@ -247,7 +247,7 @@ class MainActivity : AppCompatActivity() {
                             res = if (picFile != null) {
                                 Log.i(TAG_SERVER, "Taking pic success, sending...")
                                 val json = JSONObject()
-                                json.put("picture_uri", "/picture/${picFile.name}")
+                                json.put("picture_url", "/picture/${picFile.name}")
                                 newFixedLengthResponse(
                                     Response.Status.OK,
                                     "text/json",
