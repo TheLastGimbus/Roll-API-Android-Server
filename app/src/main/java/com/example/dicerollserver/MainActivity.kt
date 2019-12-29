@@ -58,6 +58,14 @@ class MainActivity : AppCompatActivity() {
             updateTransform()
         }
 
+        switch_flash.setOnCheckedChangeListener { buttonView, isChecked ->
+            imageCapture.flashMode =
+                if (switch_flash.isChecked)
+                    FlashMode.ON
+                else
+                    FlashMode.OFF
+        }
+
         // Acquire wifi lock to keep wifi alive to handle request to server
         val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, WIFI_LOCK_TAG)
@@ -102,7 +110,12 @@ class MainActivity : AppCompatActivity() {
         // Capture img use case
         val captureConfig = ImageCaptureConfig.Builder().apply {
             setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
-            setFlashMode(FlashMode.ON)
+            setFlashMode(
+                if (switch_flash.isChecked)
+                    FlashMode.ON
+                else
+                    FlashMode.OFF
+            )
             setTargetResolution(Size(1200, 1600))
         }.build()
         imageCapture = ImageCapture(captureConfig)
