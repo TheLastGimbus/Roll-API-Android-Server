@@ -1,8 +1,6 @@
 def targetFolder = "src/main/assets"
-def modelFloatDownloadUrl = "http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz"
-def modelQuantDownloadUrl = "http://download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224_quant.tgz"
-def localCacheFloat = "build/intermediates/mobilenet_v1_1.0_224.tgz"
-def localCacheQuant = "build/intermediates/mobilenet_v1_1.0_224_quant.tgz"
+def modelFloatDownloadUrl = "https://drive.google.com/uc?export=download&id=1jLfqIYijd9EuzFcP5s311Vz8mu_5eMfw"
+def localCacheFloat = "build/intermediates/dice_class.zip"
 
 
 task downloadModelFloat(type: DownloadUrlTask) {
@@ -13,31 +11,15 @@ task downloadModelFloat(type: DownloadUrlTask) {
     target = file("${localCacheFloat}")
 }
 
-task downloadModelQuant(type: DownloadUrlTask) {
-    doFirst {
-        println "Downloading ${modelQuantDownloadUrl}"
-    }
-    sourceUrl = "${modelQuantDownloadUrl}"
-    target = file("${localCacheQuant}")
-}
-
 task unzipModelFloat(type: Copy, dependsOn: 'downloadModelFloat') {
     doFirst {
         println "Unzipping ${localCacheFloat}"
     }
-    from tarTree("${localCacheFloat}")
+    from zipTree("${localCacheFloat}")
     into "${targetFolder}"
 }
 
-task unzipModelQuant(type: Copy, dependsOn: 'downloadModelQuant') {
-    doFirst {
-        println "Unzipping ${localCacheQuant}"
-    }
-    from tarTree("${localCacheQuant}")
-    into "${targetFolder}"
-}
-
-task cleanUnusedFiles(type: Delete, dependsOn: ['unzipModelFloat', 'unzipModelQuant']) {
+task cleanUnusedFiles(type: Delete, dependsOn: ['unzipModelFloat']) {
     delete fileTree("${targetFolder}").matching {
         include "*.pb"
         include "*.ckpt.*"
@@ -61,5 +43,4 @@ class DownloadUrlTask extends DefaultTask {
 }
 
 preBuild.dependsOn unzipModelFloat
-preBuild.dependsOn unzipModelQuant
 preBuild.dependsOn cleanUnusedFiles

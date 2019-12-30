@@ -40,10 +40,10 @@ constructor(activity: Activity, device: Classifier.Device, numThreads: Int) :
     // see build.gradle for where to obtain this file. It should be auto
     // downloaded into assets.
     val modelPath: String
-        get() = "mobilenet_v1_1.0_224.tflite"
+        get() = "dice_classifier.tflite"
 
     override val labelPath: String
-        get() = "labels.txt"
+        get() = "dice_labels.txt"
 
     override val preprocessNormalizeOp: TensorOperator
         get() = NormalizeOp(IMAGE_MEAN, IMAGE_STD)
