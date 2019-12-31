@@ -1,5 +1,5 @@
 def targetFolder = "src/main/assets"
-def modelFloatDownloadUrl = "https://drive.google.com/uc?export=download&id=1jLfqIYijd9EuzFcP5s311Vz8mu_5eMfw"
+def modelFloatDownloadUrl = "https://drive.google.com/uc?export=download&id=1CH9aZTKvK7cRSjUf-iKyGHMm1XMtg_nh"
 def localCacheFloat = "build/intermediates/dice_class.zip"
 
 
