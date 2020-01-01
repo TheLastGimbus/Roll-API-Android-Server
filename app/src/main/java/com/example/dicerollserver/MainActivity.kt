@@ -3,6 +3,7 @@ package com.example.dicerollserver
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.wifi.WifiManager
 import android.os.Bundle
@@ -15,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.dicerollserver.tflite.Classifier
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.OkHttpClient
@@ -22,6 +24,7 @@ import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.Executors
+
 
 private const val REQUEST_CODE_PERMISSIONS = 10
 private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
@@ -33,11 +36,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var imageCapture: ImageCapture
+    private val imageTargerWidth = 300
+    private val imageTargetHeight = 300
 
     private lateinit var wifiLock: WifiManager.WifiLock
     private val WIFI_LOCK_TAG = "server_wifi_lock"
 
     private val server = WebServer(8822)
+
+    private lateinit var classifier: Classifier
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,6 +77,13 @@ class MainActivity : AppCompatActivity() {
         val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, WIFI_LOCK_TAG)
         wifiLock.acquire()
+
+        classifier = Classifier.create(
+            this,
+            Classifier.Model.FLOAT,
+            Classifier.Device.NNAPI,
+            4
+        )
 
         server.start()
 
@@ -116,7 +130,8 @@ class MainActivity : AppCompatActivity() {
                 else
                     FlashMode.OFF
             )
-            setTargetResolution(Size(1200, 1600))
+            setTargetRotation(Surface.ROTATION_0)
+            setTargetResolution(Size(imageTargerWidth, imageTargetHeight))
         }.build()
         imageCapture = ImageCapture(captureConfig)
         button_capture.setOnClickListener {
@@ -239,14 +254,28 @@ class MainActivity : AppCompatActivity() {
                         Log.i(TAG_SERVER, "Shake Success!")
                         // Wait a moment so the dice will get calm
                         if (imageCapture.flashMode == FlashMode.OFF) {
-                            Thread.sleep(200)
+                            Thread.sleep(750)
                         } else {
                             Thread.sleep(50)
                         }
                         getPicture { picFile ->
                             res = if (picFile != null) {
-                                Log.i(TAG_SERVER, "Taking pic success, sending...")
+                                val bitmap = BitmapFactory.decodeFile(picFile.absolutePath)
+                                Log.i(TAG_SERVER, "Taking pic success, analyzing...")
+
+                                val start = System.currentTimeMillis()
+                                val classList = classifier.recognizeImage(bitmap, 0)
+                                val highest = classList.maxBy { it.confidence!! }
+                                Log.i(TAG_SERVER, classList.toString())
+                                Log.i(TAG_SERVER, highest.toString())
+                                Log.i(
+                                    TAG_SERVER, "Analyzing finished!" +
+                                            " Took ${System.currentTimeMillis() - start}ms." +
+                                            " Sending..."
+                                )
+
                                 val json = JSONObject()
+                                json.put("number", highest!!.id)
                                 json.put("picture_url", "/picture/${picFile.name}")
                                 newFixedLengthResponse(
                                     Response.Status.OK,
@@ -306,6 +335,7 @@ class MainActivity : AppCompatActivity() {
             // It doesn't work without it because no
             while (res == null) {
                 TAG_SERVER.toString()
+                Log.i("TRASH-CRAP", "WAITING")
             }
             // This is also very important because it sometimes doesn't work if it keeps connection
             res!!.closeConnection(true)
